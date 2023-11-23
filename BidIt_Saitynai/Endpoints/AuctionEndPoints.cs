@@ -1,8 +1,13 @@
-﻿using BidIt_Saitynai.Data;
+﻿using BidIt_Saitynai.Auth;
+using BidIt_Saitynai.Data;
 using BidIt_Saitynai.Data.Entities;
 using BidIt_Saitynai.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using O9d.AspNet.FluentValidation;
+using System.Security.Claims;
 using System.Text.Json;
 using static BidIt_Saitynai.Data.Dtos.AuctionDtos;
 
@@ -43,7 +48,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("GetAuction");
 
-            auctionsGroup.MapPost("auctions", async ([Validate] CreateAuctionDto createAuctionDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            auctionsGroup.MapPost("auctions", [Authorize(Roles = ForumRoles.Admin)] async ([Validate] CreateAuctionDto createAuctionDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
                 var company = await dbContext.Companies.FirstOrDefaultAsync(o => o.Id.Equals(createAuctionDto.company));
                 if (company == null)
@@ -57,7 +62,8 @@ namespace BidIt_Saitynai.Endpoints
                     CreationDate = DateTime.Now,
                     StartingTime = DateTime.Now,
                     EndingTime = DateTime.Now,
-                    Company = company
+                    Company = company,
+                    UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                 };
                 dbContext.Auctions.Add(auction);
                 await dbContext.SaveChangesAsync();
@@ -66,7 +72,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateAuction");
 
-            auctionsGroup.MapPut("auctions/{id}", async (int id, [Validate] UpdateAuctionDto dto, BidDbContext dbContext) =>
+            auctionsGroup.MapPut("auctions/{id}", [Authorize(Roles = ForumRoles.Admin)] async (int id, [Validate] UpdateAuctionDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var company = await dbContext.Companies.FirstOrDefaultAsync(x => x.Id.Equals(dto.company));
                 if (company == null)
@@ -78,12 +84,17 @@ namespace BidIt_Saitynai.Endpoints
                 {
                     return Results.NotFound();
                 }
+                if (!httpContext.User.IsInRole(ForumRoles.Admin) && httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != auction.UserId)
+                {
+                    return Results.Forbid();
+                }
                 auction.Name = dto.name;
                 auction.City = dto.city;
                 auction.CreationDate = dto.creationDate;
                 auction.StartingTime = dto.startingTime;
                 auction.EndingTime = dto.endingTime;
                 auction.Company = company;
+               
 
                 dbContext.Update(auction);
                 await dbContext.SaveChangesAsync();

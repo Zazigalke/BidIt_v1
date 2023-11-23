@@ -1,8 +1,13 @@
-﻿using BidIt_Saitynai.Data;
+﻿using BidIt_Saitynai.Auth;
+using BidIt_Saitynai.Data;
 using BidIt_Saitynai.Data.Entities;
 using BidIt_Saitynai.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using O9d.AspNet.FluentValidation;
+using System.Security.Claims;
 using System.Text.Json;
 using static BidIt_Saitynai.Data.Dtos.BookDtos;
 
@@ -44,7 +49,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("GetBook");
 
-            booksGroup.MapPost("books", async ([Validate] CreateBookDto createBookDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            booksGroup.MapPost("books", [Authorize(Roles = ForumRoles.ForumUser)] async ([Validate] CreateBookDto createBookDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(o => o.Id == createBookDto.user);
                 if (user == null)
@@ -57,7 +62,8 @@ namespace BidIt_Saitynai.Endpoints
                     Condition = createBookDto.condition,
                     PageCount = createBookDto.pageCount,
                     StartingPrice = createBookDto.startingPrice,
-                    User = user
+                    User = user,
+                    UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                 };
                 dbContext.Books.Add(book);
                 await dbContext.SaveChangesAsync();
@@ -66,7 +72,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateBook");
 
-            booksGroup.MapPut("books/{id}", async (int id, [Validate] UpdateBookDto dto, BidDbContext dbContext) =>
+            booksGroup.MapPut("books/{id}", [Authorize(Roles = ForumRoles.ForumUser)] async (int id, [Validate] UpdateBookDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == dto.user);
                 if (user == null)
@@ -77,6 +83,10 @@ namespace BidIt_Saitynai.Endpoints
                 if (book == null)
                 {
                     return Results.NotFound();
+                }
+                if (!httpContext.User.IsInRole(ForumRoles.ForumUser) && httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != book.UserId)
+                {
+                    return Results.Forbid();
                 }
                 book.Title = dto.title;
                 book.Condition = dto.condition;

@@ -1,4 +1,6 @@
-﻿using FluentValidation;
+﻿using BidIt_Saitynai.Auth.Model;
+using FluentValidation;
+using System.ComponentModel.DataAnnotations;
 using static BidIt_Saitynai.Data.Entities.Book;
 using static BidIt_Saitynai.Data.Entities.User;
 
@@ -12,6 +14,11 @@ namespace BidIt_Saitynai.Data.Entities
         public int PageCount { get; set; }
         public double StartingPrice { get; set; }
         public User User { get; set; }
+
+        [Required]
+        public required string UserId { get; set; }
+        public ForumRestUser AuthUser { get; set; }
+
 
 
     }

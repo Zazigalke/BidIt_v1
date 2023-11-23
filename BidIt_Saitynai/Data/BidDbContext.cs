@@ -1,9 +1,11 @@
-﻿using BidIt_Saitynai.Data.Entities;
+﻿using BidIt_Saitynai.Auth.Model;
+using BidIt_Saitynai.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace BidIt_Saitynai.Data
 {
-    public class BidDbContext : DbContext
+    public class BidDbContext : IdentityDbContext<ForumRestUser>
     {
    
         public DbSet<User> Users { get; set; }

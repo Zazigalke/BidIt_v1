@@ -5,6 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using static BidIt_Saitynai.Data.Dtos.UserDtos;
 using BidIt_Saitynai.Helpers;
 using System.Text.Json;
+using System.Security.Claims;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.AspNetCore.Authorization;
+using BidIt_Saitynai.Auth;
 
 namespace BidIt_Saitynai.Endpoints
 {
@@ -43,14 +47,15 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("GetUser");
 
-            usersGroup.MapPost("users", async ([Validate] CreateUserDto createUserDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            usersGroup.MapPost("users",[Authorize(Roles = ForumRoles.Admin)] async ([Validate] CreateUserDto createUserDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
 
                 var user = new User()
                 {
                     FirstName = createUserDto.firstName,
                     LastName = createUserDto.lastName,
-                    Email = createUserDto.email
+                    Email = createUserDto.email,
+                    UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                 };
                 dbContext.Users.Add(user);
                 await dbContext.SaveChangesAsync();
@@ -65,12 +70,16 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateUser");
 
-            usersGroup.MapPut("users/{id}", async (int id, [Validate] UpdateUserDto dto, BidDbContext dbContext) =>
+            usersGroup.MapPut("users/{id}", [Authorize(Roles = ForumRoles.Admin)] async (int id, [Validate] UpdateUserDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(o => o.Id == id);
                 if (user == null)
                 {
                     return Results.NotFound();
+                }
+                if(!httpContext.User.IsInRole(ForumRoles.Admin) && httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != user.UserId)
+                {
+                    return Results.Forbid();
                 }
                 user.FirstName = dto.firstName;
                 user.LastName = dto.lastName;

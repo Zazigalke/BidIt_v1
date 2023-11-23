@@ -1,8 +1,13 @@
-﻿using BidIt_Saitynai.Data;
+﻿using BidIt_Saitynai.Auth;
+using BidIt_Saitynai.Data;
 using BidIt_Saitynai.Data.Entities;
 using BidIt_Saitynai.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using O9d.AspNet.FluentValidation;
+using System.Security.Claims;
 using System.Text.Json;
 using static BidIt_Saitynai.Data.Dtos.CompanyDtos;
 
@@ -43,11 +48,12 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("GetCompany");
 
-            companiesGroup.MapPost("companies", async ([Validate] CreateCompanyDto createCompanyDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            companiesGroup.MapPost("companies", [Authorize(Roles = ForumRoles.Admin)] async ([Validate] CreateCompanyDto createCompanyDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
                 var company = new Company()
                 {
                     Name = createCompanyDto.name,
+                    UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
 
                 };
                 dbContext.Companies.Add(company);
@@ -56,12 +62,16 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateCompany");
 
-            companiesGroup.MapPut("companies/{id}", async (int id, [Validate] UpdateCompanyDto dto, BidDbContext dbContext) =>
+            companiesGroup.MapPut("companies/{id}", async (int id, [Validate] UpdateCompanyDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var company = await dbContext.Companies.FirstOrDefaultAsync(o => o.Id == id);
                 if (company == null)
                 {
                     return Results.NotFound();
+                }
+                if (!httpContext.User.IsInRole(ForumRoles.Admin) && httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != company.UserId)
+                {
+                    return Results.Forbid();
                 }
                 company.Name = dto.name;
                 dbContext.Update(company);

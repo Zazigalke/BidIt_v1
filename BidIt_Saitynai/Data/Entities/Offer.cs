@@ -1,4 +1,7 @@
-﻿namespace BidIt_Saitynai.Data.Entities
+﻿using BidIt_Saitynai.Auth.Model;
+using System.ComponentModel.DataAnnotations;
+
+namespace BidIt_Saitynai.Data.Entities
 {
     public class Offer
     {
@@ -7,5 +10,10 @@
         public DateTime CreationDate { get; set; }
         public Book Book { get; set; }
         public Auction Auction { get; set; }
+
+        [Required]
+        public required string UserId { get; set; }
+        public ForumRestUser AuthUser { get; set; }
+
     }
 }

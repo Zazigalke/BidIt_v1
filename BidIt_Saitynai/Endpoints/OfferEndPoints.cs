@@ -1,9 +1,15 @@
-﻿using BidIt_Saitynai.Data;
+﻿using BidIt_Saitynai.Auth;
+using BidIt_Saitynai.Data;
 using BidIt_Saitynai.Data.Entities;
 using BidIt_Saitynai.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using O9d.AspNet.FluentValidation;
 using System;
+using System.Net.Http;
+using System.Security.Claims;
 using System.Text.Json;
 using static BidIt_Saitynai.Data.Dtos.CompanyDtos;
 using static BidIt_Saitynai.Data.Dtos.OfferDtos;
@@ -44,7 +50,7 @@ namespace BidIt_Saitynai.Endpoints
                 return Results.Ok(new OfferDto(offer.Id, offer.Price, offer.CreationDate, offer.Book.Title, offer.Auction.Name));
             }).WithName("GetOffer");
 
-            offersGroup.MapPost("offers", async ([Validate] CreateOfferDto createOfferDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            offersGroup.MapPost("offers", [Authorize(Roles = ForumRoles.ForumUser)] async ([Validate] CreateOfferDto createOfferDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
                 var book = await dbContext.Books.FirstOrDefaultAsync(o => o.Id.Equals(createOfferDto.book));
                 if (book == null)
@@ -62,6 +68,7 @@ namespace BidIt_Saitynai.Endpoints
                     CreationDate = DateTime.Now,
                     Book = book,
                     Auction = auction,
+                    UserId = httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)
                 };
 
                 dbContext.Offers.Add(offer);
@@ -71,7 +78,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateOffer");
 
-            offersGroup.MapPut("offers/{id}", async (int id, [Validate] UpdateOfferDto dto, BidDbContext dbContext) =>
+            offersGroup.MapPut("offers/{id}", [Authorize(Roles = ForumRoles.ForumUser)] async (int id, [Validate] UpdateOfferDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var book = await dbContext.Books.FirstOrDefaultAsync(x => x.Id.Equals(dto.book));
                 if (book == null)
@@ -88,6 +95,10 @@ namespace BidIt_Saitynai.Endpoints
                 if (offer == null)
                 {
                     return Results.NotFound();
+                }
+                if (!httpContext.User.IsInRole(ForumRoles.ForumUser) && httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub) != offer.UserId)
+                {
+                    return Results.Forbid();
                 }
                 offer.Price = dto.price;
                 offer.CreationDate = dto.creationDate;
