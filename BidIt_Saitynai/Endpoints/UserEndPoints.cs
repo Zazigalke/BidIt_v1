@@ -35,7 +35,6 @@ namespace BidIt_Saitynai.Endpoints
                 return pagedList.Select(user => new UserDto(user.Id, user.FirstName, user.LastName, user.Email));
 
             }).WithName("GetUsers");
-
             usersGroup.MapGet("users/{id}", async (int id, BidDbContext dbContext) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(o => o.Id == id);
@@ -107,6 +106,7 @@ namespace BidIt_Saitynai.Endpoints
 
 
         }
+
         /*static IEnumerable<LinkDto> CreateLinks(int userId, HttpContext httpContext, LinkGenerator linkGenerator)
         {
             yield return new LinkDto(linkGenerator.GetUriByName(httpContext, "GetUser", new { userId }), "self", "GET");

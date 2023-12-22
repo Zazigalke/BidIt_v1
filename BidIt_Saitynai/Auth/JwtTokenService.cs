@@ -32,7 +32,7 @@ namespace BidIt_Saitynai.Auth
             (
                 issuer: _issuer,
                 audience: _audience,
-                expires: DateTime.UtcNow.AddMinutes(10),
+                expires: DateTime.UtcNow.AddMinutes(60),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(_authSigningKey, SecurityAlgorithms.HmacSha256)
             );

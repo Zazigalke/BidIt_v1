@@ -1,0 +1,388 @@
+﻿@page "/auction"
+@using BidItSaitynai_naujas.Shared
+@using Microsoft.IdentityModel.Tokens;
+@using System.IdentityModel.Tokens.Jwt;
+@using System.Security.Claims;
+@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject HttpService service
+<PageTitle>Auctions</PageTitle>
+
+<h1>Auctions</h1>
+
+@if (isAdmin)
+{
+    <button type="submit" class="btn btn-success" style="margin-right: 70px" @onclick="OpenAddForm">Add auction</button>
+}
+@if (companies == null || companies.Count == 0)
+{
+    <div class="loader" style="margin-top: 20%">
+    
+    </div>
+
+}
+else
+{
+    
+    <div class="modal-backdrop fade @(showEdit ? "show" : "") @(displayEdit ? "" : "d-none")"></div>
+    <div class="modal fade @(showEdit ? "show" : "")  @(displayEdit ? "d-block" : "d-none")" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Form</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="CancelAdd">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form @onsubmit="SubmitEditAuctionForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" placeholder="@log.Name" autocomplete="off" required @bind-value="editLog.Name" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">City</label>
+                            <input type="city" class="form-control" id="city" required @bind-value="editLog.City" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="creationdate" class="form-label">Creation date</label>
+                            <input type="creationdate" class="form-control" id="creationdate" required @bind-value="editLog.CreationDate" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="startingtime" class="form-label">Starting time</label>
+                            <input type="startingtime" class="form-control" id="startingtime" placeholder="" required @bind-value="editLog.StartingTime" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="endingtime" class="form-label">Ending time</label>
+                            <input type="endingtime" class="form-control" id="endingtime" required @bind-value="editLog.EndingTime" @onkeypress="() => auctionMessage = null" />
+
+                        </div>
+                        <div class="mb-3">
+                            <label for="company" class="form-label">Company</label>
+                            <select class="form-select" id="company" @bind="editLog.Company">
+                                <option value="">Select a Company</option>
+                                @foreach (var company in companies)
+                                {
+                                    <option value="@company.Id">@company.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success" disabled="@disableBtn">Create</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="CancelEdit">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop fade @(showAdd ? "show" : "") @(displayAdd ? "" : "d-none")"></div>
+    <div class="modal fade @(showAdd ? "show" : "")  @(displayAdd ? "d-block" : "d-none")" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Login Form</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="CancelAdd">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form @onsubmit="SubmitAddAuctionForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="name" placeholder="" autocomplete="off" required @bind-value="log.Name" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">City</label>
+                            <input type="city" class="form-control" id="city" required @bind-value="log.City" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="creationdate" class="form-label">Creation date</label>
+                            <input type="datetime-local" class="form-control" id="creationdate" required @bind-value="log.CreationDate" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="startingtime" class="form-label">Starting time</label>
+                            <input type="datetime-local" class="form-control" id="startingtime" required @bind-value="log.StartingTime" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="endingtime" class="form-label">Ending time</label>
+                            <input type="datetime-local" class="form-control" id="endingtime" required @bind-value="log.EndingTime" @onkeypress="() => auctionMessage = null" />
+
+                        </div>
+                        <div class="mb-3">
+                            <label for="company" class="form-label">Company</label>
+                            <select class="form-select" id="company" @bind="log.Company">
+                                <option value="">Select a Company</option>
+                                @foreach (var company in companies)
+                                {
+                                    <option value="@company.Id">@company.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="mb-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success" disabled="@disableBtn">Create</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="CancelAdd">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+@if (auctions == null || auctions.Count == 0)
+{
+    <p style="margin-top: 10%"><em>No available auctions right now :(</em></p>
+}
+else
+{
+    <table class="table table-hover table-sm table-responsive">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Name</th>
+                <th>City</th>
+                <th>Creation date</th>
+                <th>Starting time</th>
+                <th>Ending time</th>
+                <th>Company</th>
+                @if (isAdmin)
+                {
+                    <th></th>
+                    <th></th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var auction in auctions)
+            {
+                <tr>
+                    <td>@auction.Id</td>
+                    <td>@auction.Name</td>
+                    <td>@auction.City</td>
+                    <td>@auction.CreationDate.ToString("yyyy/MM/dd")</td>
+                    <td>@auction.StartingTime.ToString("yyyy/MM/dd")</td>
+                    <td>@auction.EndingTime.ToString("yyyy/MM/dd")</td>
+                    <td>@auction.Company</td>
+                    @if (isAdmin)
+                    {
+                        <td><button type="submit" class="btn btn-warning btn-sm" style="" @onclick="(() => OpenEditForm(auction.Id))">Edit</button></td>
+                        <td><button type="submit" class="btn btn-danger btn-sm" style="" @onclick="(() => DeleteAuction(auction.Id))">Delete</button></td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="my-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+}
+
+@code {
+    [CascadingParameter]
+    public MainLayout mainLayout { get; set; }
+    HttpClient client;
+    private bool showAdd, displayAdd, showEdit, displayEdit, disableBtn;
+
+    private string auctionMessage, name, city, creationDate, startingTime, endingTime, company, alertType, message;
+    bool isAdmin;
+    string roles;
+    private int editId;
+    private List<Auction> auctions;
+    private List<Company> companies;
+    AuctionCreate log = new AuctionCreate();
+    AuctionEdit editLog = new AuctionEdit();
+
+    public async Task IsAdmin()
+    {
+        roles = await DisplayClaims("http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+        if (roles == "Admin")
+        {
+            isAdmin = true;
+        }
+        else
+        {
+            isAdmin = false;
+        }
+    }
+    bool deletionResult = false;
+    private async Task<bool> DeleteAuction(int auctionId)
+    {
+        bool success = false;
+        try
+        {
+            using (var response = await client.DeleteAsync($"https://biditsaitynai.azurewebsites.net/api/auctions/{auctionId}", System.Threading.CancellationToken.None))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+
+                    success = true;
+                    await RefreshPage();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+           
+        }
+
+        return success;
+    }
+    private async Task RefreshPage()
+    {
+        try
+        {
+            auctions = await client.GetFromJsonAsync<List<Auction>>($"https://biditsaitynai.azurewebsites.net/api/auctions");
+            companies = await client.GetFromJsonAsync<List<Company>>($"https://biditsaitynai.azurewebsites.net/api/companies");
+        }
+        catch (Exception ex)
+        {
+           
+        }
+    }
+    private async Task<bool> SubmitEditAuctionForm()
+    {
+        if (!string.IsNullOrEmpty(editLog.Name) && !string.IsNullOrEmpty(editLog.City) && editLog.CreationDate != null && editLog.StartingTime != null && editLog.EndingTime != null && editLog.Company != null)
+        {
+            disableBtn = true;
+
+            using (var msg = await client.PutAsJsonAsync<AuctionEdit>($"https://biditsaitynai.azurewebsites.net/api/auctions/{editId}", editLog, System.Threading.CancellationToken.None))
+            {
+
+                if (msg.IsSuccessStatusCode)
+                {
+                    Auction result = await msg.Content.ReadFromJsonAsync<Auction>();
+                    if (result.Id != null)
+                    {
+                        displayAdd = false;
+                        alertType = "success";
+                        auctionMessage = $"Auction editted succesfully";
+                        log.Clear();
+                        await RefreshPage();
+                    }
+                    else
+                    {
+                        alertType = "danger";
+                        auctionMessage = " Try again with different values.";
+                    }
+                }
+                disableBtn = false;
+            }
+        }
+        else
+        {
+            disableBtn = false;
+            auctionMessage = $"Fill all the fields.";
+        }
+        return false;
+    }
+    private async Task<bool> SubmitAddAuctionForm()
+    {
+
+        if (!string.IsNullOrEmpty(log.Name) && !string.IsNullOrEmpty(log.City) && log.CreationDate != null && log.StartingTime != null && log.EndingTime != null && log.Company != null)
+        {
+            disableBtn = true;
+
+            using (var msg = await client.PostAsJsonAsync<AuctionCreate>("https://biditsaitynai.azurewebsites.net/api/auctions", log, System.Threading.CancellationToken.None))
+            {
+
+                if (msg.IsSuccessStatusCode)
+                {
+                    Auction result = await msg.Content.ReadFromJsonAsync<Auction>();
+                    if (result.Id != null)
+                    {
+                        displayAdd = false;
+                        alertType = "success";
+                        auctionMessage = $"Auction added succesfully";
+                        log.Clear();
+                        await RefreshPage();
+                    }
+                    else
+                    {
+                        alertType = "danger";
+                        auctionMessage = " Try again with different values.";
+                    }
+                }
+                disableBtn = false;
+            }
+        }
+        else
+        {
+            disableBtn = false;
+            auctionMessage = $"Fill all the fields.";
+        }
+        return false;
+    }
+
+    private List<Claim> ExtractClaimsFromToken()
+    {
+        var handler = new JwtSecurityTokenHandler();
+
+        if (mainLayout.JWT.Contains('.') && handler.CanReadToken(mainLayout.JWT))
+        {
+            var token = handler.ReadJwtToken(mainLayout.JWT);
+            return token.Claims.ToList();
+        }
+        return new List<Claim>();
+    }
+
+    private async Task<string> DisplayClaims(string type)
+    {
+        var claims = ExtractClaimsFromToken();
+
+        var userNameClaim = claims.FirstOrDefault(claim => claim.Type == type);
+        if (userNameClaim != null)
+        {
+            return userNameClaim.Value;
+
+        }
+        return null;
+    }
+    public async Task OpenAddForm()
+    {
+        log.Clear();
+        displayAdd = true;
+        await Task.Delay(100);
+        showAdd = true;
+    }
+    public async Task OpenEditForm(int id)
+    {
+        var editableAuction = auctions.FirstOrDefault(x => x.Id == id);
+        //log.Clear();
+        editId = editableAuction.Id;
+        editLog.Name = editableAuction.Name;
+        editLog.City = editableAuction.City;
+        editLog.CreationDate = editableAuction.CreationDate;
+        editLog.StartingTime = editableAuction.StartingTime;
+        editLog.EndingTime = editableAuction.EndingTime;
+        displayEdit = true;
+        await Task.Delay(100);
+        showEdit = true;
+    }
+    private async Task CancelAdd()
+    {
+        auctionMessage = null;
+        showAdd = false;
+        await Task.Delay(100);
+        displayAdd = false;
+    }
+    private async Task CancelEdit()
+    {
+        auctionMessage = null;
+        showEdit = false;
+        await Task.Delay(100);
+        displayEdit = false;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        client = service.GetClient();
+
+        IsAdmin();
+        companies = await client.GetFromJsonAsync<List<Company>>($"https://biditsaitynai.azurewebsites.net/api/companies");
+        auctions = await client.GetFromJsonAsync<List<Auction>>($"https://biditsaitynai.azurewebsites.net/api/auctions");
+
+
+    }
+}

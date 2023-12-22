@@ -1,0 +1,339 @@
+﻿@page "/books"
+@using BidItSaitynai_naujas.Shared
+@using Microsoft.IdentityModel.Tokens;
+@using System.IdentityModel.Tokens.Jwt;
+@using System.Security.Claims;
+@inject NavigationManager _navigationManager
+@inject HttpClient Http
+@inject HttpService service
+<PageTitle>My books</PageTitle>
+
+<h1>My books</h1>
+
+
+<button type="submit" class="btn btn-success" style="margin-right: 70px" @onclick="OpenAddForm">Add book</button>
+
+    <div class="modal-backdrop fade @(showEdit ? "show" : "") @(displayEdit ? "" : "d-none")"></div>
+    <div class="modal fade @(showEdit ? "show" : "")  @(displayEdit ? "d-block" : "d-none")" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Form</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="CancelAdd">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form @onsubmit="SubmitEditBookForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title" placeholder="@log.Title" autocomplete="off" required @bind-value="editLog.Title" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="cond" class="form-label">Condition</label>
+                            <input type="number" class="form-control" id="cond" placeholder="@log.Condition" autocomplete="off" required @bind-value="editLog.Condition" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="page" class="form-label">Page count</label>
+                            <input type="number" class="form-control" id="page" placeholder="@log.PageCount" autocomplete="off" required @bind-value="editLog.PageCount" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="price" class="form-label">Starting price</label>
+                        <input type="number" class="form-control" id="price" placeholder="@log.StartingPrice" autocomplete="off" required @bind-value="editLog.StartingPrice" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success" disabled="@disableBtn">Create</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="CancelEdit">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop fade @(showAdd ? "show" : "") @(displayAdd ? "" : "d-none")"></div>
+    <div class="modal fade @(showAdd ? "show" : "")  @(displayAdd ? "d-block" : "d-none")" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Form</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="CancelAdd">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form @onsubmit="SubmitAddBookForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="title1" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title1" placeholder="" autocomplete="off" required @bind-value="log.Title" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="cond1" class="form-label">Condition</label>
+                            <input type="number" class="form-control" id="cond1" placeholder="" autocomplete="off" required @bind-value="log.Condition" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="page1" class="form-label">Page count</label>
+                            <input type="number" class="form-control" id="page1" placeholder="" autocomplete="off" required @bind-value="log.PageCount" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="price1" class="form-label">Starting price</label>
+                            <input type="number" class="form-control" id="price1" placeholder="" autocomplete="off" required @bind-value="log.StartingPrice" @onkeypress="() => auctionMessage = null" />
+                        </div>
+                        <div class="mb-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-success" disabled="@disableBtn">Create</button>
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="CancelAdd">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+@if (books == null || books.Count == 0)
+{
+    <p style="margin-top: 10%"><em>No available auctions right now :(</em></p>
+}
+else
+{
+    <table class="table table-hover table-sm table-responsive">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>Condition</th>
+                <th>Page count</th>
+                <th>Starting price</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var auction in books)
+            {
+                <tr>
+                    <td>@auction.Id</td>
+                    <td>@auction.Title</td>
+                    <td>@auction.Condition</td>
+                    <td>@auction.PageCount</td>
+                    <td>@auction.StartingPrice</td>
+                    <td><button type="submit" class="btn btn-warning btn-sm" style="" @onclick="(() => OpenEditForm(auction.Id))">Edit</button></td>
+                    <td><button type="submit" class="btn btn-danger btn-sm" style="" @onclick="(() => DeleteBook(auction.Id))">Delete</button></td>
+
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="my-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(auctionMessage) ? "d-none" : "")" role="alert">@auctionMessage</div>
+}
+
+@code {
+    [CascadingParameter]
+    public MainLayout mainLayout { get; set; }
+    HttpClient client;
+    private bool showAdd, displayAdd, showEdit, displayEdit, disableBtn;
+
+    private string auctionMessage, name, city, creationDate, startingTime, endingTime, company, alertType, message;
+    bool isAdmin;
+    string roles;
+    private int editId;
+    private List<Book> books;
+    BookRequest log = new BookRequest();
+    BookEdit editLog = new BookEdit();
+
+
+    public async Task IsAdmin()
+    {
+        roles = await DisplayClaims("http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+        if (roles == "Admin")
+        {
+            isAdmin = true;
+        }
+        else
+        {
+            isAdmin = false;
+        }
+    }
+    bool deletionResult = false;
+    private async Task<bool> DeleteBook(int bookId)
+    {
+        bool success = false;
+        try
+        {
+            using (var response = await client.DeleteAsync($"https://biditsaitynai.azurewebsites.net/api/books/{bookId}", System.Threading.CancellationToken.None))
+            {
+                if (response.IsSuccessStatusCode)
+                {
+
+                    success = true;
+                    await RefreshPage();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("KA");
+        }
+
+        return success;
+    }
+    private async Task RefreshPage()
+    {
+        try
+        {
+            books = await client.GetFromJsonAsync<List<Book>>($"https://biditsaitynai.azurewebsites.net/api/books/users");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("??????????");
+        }
+    }
+    private async Task<bool> SubmitEditBookForm()
+    {
+        if (!string.IsNullOrEmpty(editLog.Title) && editLog.Condition != null && editLog.PageCount != null && editLog.StartingPrice != null)
+        {
+            disableBtn = true;
+            editLog.User = 1;
+            using (var msg = await client.PutAsJsonAsync<BookEdit>($"https://biditsaitynai.azurewebsites.net/api/books/{editId}", editLog, System.Threading.CancellationToken.None))
+            {
+
+                if (msg.IsSuccessStatusCode)
+                {
+                    Book result = await msg.Content.ReadFromJsonAsync<Book>();
+                    if (result.Id != null)
+                    {
+                        displayAdd = false;
+                        alertType = "success";
+                        auctionMessage = $"Book editted succesfully";
+                        log.Clear();
+                        await RefreshPage();
+                    }
+                    else
+                    {
+                        alertType = "danger";
+                        auctionMessage = " Try again with different values.";
+                    }
+                }
+                disableBtn = false;
+            }
+        }
+        else
+        {
+            disableBtn = false;
+            auctionMessage = $"Fill all the fields.";
+        }
+        return false;
+    }
+    private async Task<bool> SubmitAddBookForm()
+    {
+        log.User = 1;
+        if (!string.IsNullOrEmpty(log.Title) && log.Condition > 0 && log.PageCount > 0 && log.StartingPrice > 0)
+        {
+            disableBtn = true;
+
+            using (var msg = await client.PostAsJsonAsync<BookRequest>("https://biditsaitynai.azurewebsites.net/api/books", log, System.Threading.CancellationToken.None))
+            {
+
+                if (msg.IsSuccessStatusCode)
+                {
+                    Book result = await msg.Content.ReadFromJsonAsync<Book>();
+                    if (result.Id != null)
+                    {
+                        displayAdd = false;
+                        alertType = "success";
+                        auctionMessage = $"Auction added succesfully";
+                        log.Clear();
+                        await RefreshPage();
+                    }
+                    else
+                    {
+                        alertType = "danger";
+                        auctionMessage = " Try again with different values.";
+                    }
+                }
+                disableBtn = false;
+            }
+        }
+        else
+        {
+            disableBtn = false;
+            auctionMessage = $"Fill all the fields.";
+        }
+        return false;
+    }
+
+    private List<Claim> ExtractClaimsFromToken()
+    {
+        var handler = new JwtSecurityTokenHandler();
+
+        if (mainLayout.JWT.Contains('.') && handler.CanReadToken(mainLayout.JWT))
+        {
+            var token = handler.ReadJwtToken(mainLayout.JWT);
+            return token.Claims.ToList();
+        }
+        return new List<Claim>();
+    }
+
+    private async Task<string> DisplayClaims(string type)
+    {
+        var claims = ExtractClaimsFromToken();
+
+        var userNameClaim = claims.FirstOrDefault(claim => claim.Type == type);
+        if (userNameClaim != null)
+        {
+            return userNameClaim.Value;
+
+        }
+        return null;
+    }
+    public async Task OpenAddForm()
+    {
+        log.Clear();
+        displayAdd = true;
+        await Task.Delay(100);
+        showAdd = true;
+    }
+    public async Task OpenEditForm(int id)
+    {
+        var editableAuction = books.FirstOrDefault(x => x.Id == id);
+        //log.Clear();
+        editId = editableAuction.Id;
+        editLog.Title = editableAuction.Title;
+        editLog.Condition = editableAuction.Condition;
+        editLog.PageCount = editableAuction.PageCount;
+        editLog.StartingPrice = editableAuction.StartingPrice;
+        displayEdit = true;
+        await Task.Delay(100);
+        showEdit = true;
+    }
+    private async Task CancelAdd()
+    {
+        auctionMessage = null;
+        showAdd = false;
+        await Task.Delay(100);
+        displayAdd = false;
+    }
+    private async Task CancelEdit()
+    {
+        auctionMessage = null;
+        showEdit = false;
+        await Task.Delay(100);
+        displayEdit = false;
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        client = service.GetClient();
+        BookRequest temp = new BookRequest();
+        temp.Title = "Knyga";
+        temp.Condition = 2;
+        temp.StartingPrice = 123;
+        temp.PageCount = 123;
+        await client.PostAsJsonAsync<BookRequest>("https://biditsaitynai.azurewebsites.net/api/books", temp, System.Threading.CancellationToken.None);
+        books = await client.GetFromJsonAsync<List<Book>>("https://biditsaitynai.azurewebsites.net/api/books/users");
+
+
+    }
+}

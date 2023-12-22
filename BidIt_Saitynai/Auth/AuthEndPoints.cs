@@ -3,6 +3,7 @@ using Google.Protobuf.WellKnownTypes;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.JsonWebTokens;
 using System.Security.Claims;
+using static BidIt_Saitynai.Data.Dtos.UserDtos;
 
 namespace BidIt_Saitynai.Auth
 {
@@ -19,6 +20,8 @@ namespace BidIt_Saitynai.Auth
                 }
                 var newUser = new ForumRestUser
                 {
+                    FirstName = registerUserDto.FirstName,
+                    LastName = registerUserDto.LastName,    
                     Email = registerUserDto.Email,
                     UserName = registerUserDto.Username,
                 };
@@ -81,7 +84,7 @@ namespace BidIt_Saitynai.Auth
     }
     public record SuccesfulLoginDto(string AccessToken, string RefreshToken);
     public record AuthUserDto(string UserId, string UserName, string Email);
-    public record RegisterUserDto(string Username, string Email, string Password);
+    public record RegisterUserDto(string Username, string FirstName, string LastName, string Email, string Password);
     public record LoginDto(string Username, string Password);
     public record RefreshAccessTokenDto(string RefreshToken);
 }

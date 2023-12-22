@@ -4,6 +4,7 @@ namespace BidIt_Saitynai.Data.Dtos
 {
     public class BookDtos
     {
+        public record UserBooksDto(int id, string title, int condition, int pageCount, double startingPrice);
         public record BookDto(int id, string title, int condition, int pageCount, double startingPrice, int user);
         public record CreateBookDto(string title, int condition, int pageCount, double startingPrice, int user);
         public record UpdateBookDto(string title, int condition, int pageCount, double startingPrice, int user);

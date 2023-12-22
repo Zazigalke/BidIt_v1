@@ -14,6 +14,7 @@ using static BidIt_Saitynai.Data.Entities.User;
 using System.IdentityModel.Tokens.Jwt;
 using BidIt_Saitynai.Auth;
 using Org.BouncyCastle.Pkix;
+using Microsoft.AspNetCore.Builder;
 
 namespace BidIt_Saitynai
 {
@@ -48,9 +49,22 @@ namespace BidIt_Saitynai
             });
             builder.Services.AddAuthorization();
             builder.Services.AddRazorPages();
-            var app = builder.Build();
+			var allowedOrigin = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
 
-            var usersGroup = app.MapGroup("/api").WithValidationFilter().RequireValidation();
+			// Add services to the container.
+			builder.Services.AddCors(options =>
+			{
+				options.AddPolicy("myAppCors", policy =>
+				{
+					policy.WithOrigins(allowedOrigin)
+							.AllowAnyHeader()
+							.AllowAnyMethod();
+				});
+			});
+
+			var app = builder.Build();
+			app.UseCors("myAppCors");
+			var usersGroup = app.MapGroup("/api").WithValidationFilter().RequireValidation();
             var companiesGroup = app.MapGroup("/api").WithValidationFilter().RequireValidation();
             var booksGroup = app.MapGroup("/api").WithValidationFilter().RequireValidation();
             var auctionsGroup = app.MapGroup("/api").WithValidationFilter().RequireValidation();
@@ -79,14 +93,14 @@ namespace BidIt_Saitynai
             app.UseAuthorization();
             using var scope2 = app.Services.CreateScope();
             var context = scope2.ServiceProvider.GetRequiredService<BidDbContext>();
+
             context.Database.EnsureCreated();
             using var scope = app.Services.CreateScope();
             var dbSeeder = scope.ServiceProvider.GetRequiredService<AuthDbSeeder>();
 
-         
-            await dbSeeder.SeedAsync();
+			
+			await dbSeeder.SeedAsync();
             app.Run();
-
 
         }
 

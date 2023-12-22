@@ -332,7 +332,7 @@ namespace BidIt_Saitynai.Migrations
                 principalColumn: "Id");
 
             migrationBuilder.AddForeignKey(
-                name: "FK_Books_Users_UserId1",
+                name: "FK_Books_Users_UserId",
                 table: "Books",
                 column: "UserId1",
                 principalTable: "Users",
@@ -373,7 +373,7 @@ namespace BidIt_Saitynai.Migrations
                 table: "Books");
 
             migrationBuilder.DropForeignKey(
-                name: "FK_Books_Users_UserId1",
+                name: "FK_Books_Users_UserId",
                 table: "Books");
 
             migrationBuilder.DropForeignKey(

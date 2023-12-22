@@ -32,6 +32,8 @@ namespace BidIt_Saitynai.Auth.Model
             var newAdminUser = new ForumRestUser
             {
                 UserName = "admin3",
+                FirstName = "admin",
+                LastName = "admin",
                 Email = "admin@admin.com",
             };
 

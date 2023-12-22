@@ -1,0 +1,102 @@
+﻿@using System.Security.Claims;
+@using System.IdentityModel.Tokens.Jwt;
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Sofia&effect=neon|outline|emboss|shadow-multiple">
+<div class="top-row pl-4 navbar navbar-dark ">
+    <a class="navbar-brand navbar font-effect-outline" href="https://fonts.googleapis.com/css?family=Sofia" 
+    style="margin-left: 7%; font-family: 'Curlz MT'; font-size: 30px;">BidIt</a>
+    <button class="navbar-toggler" @onclick="ToggleNavMenu">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <ul class="nav flex-column">
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="register">
+                <span class="oi oi-pencil"></span> Register
+            </NavLink>
+        </li>
+        <li class="nav-item px-3">
+            <NavLink class="nav-link" href="account">
+                <span class="oi oi-lock-locked"></span> Account
+            </NavLink>
+        </li>
+        @if (mainLayout.LoggedIn)
+        {
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="auction">
+                    <span class="oi oi-euro"></span> Auctions
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="company">
+                    <span class="oi oi-home"></span> Add Companies
+                </NavLink>
+            </li>
+            <li class="nav-item px-3">
+                <NavLink class="nav-link" href="books">
+                    <span class="oi oi-book"></span> My books
+                </NavLink>
+            </li>
+
+        }
+
+
+    </ul>
+</div>
+
+@code {
+    [CascadingParameter]
+    public MainLayout mainLayout { get; set; }
+    private bool isAdmin;
+    private bool collapseNavMenu = true;
+    private string roles;
+    private string NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+    public async Task IsAdmin()
+    {
+        var roles = await DisplayClaims("http://schemas.microsoft.com/ws/2008/06/identity/claims/role");
+        if (roles == "Admin")
+        {
+            isAdmin = true;
+        }
+        else
+        {
+            isAdmin = false;
+        }
+    }
+    private List<Claim> ExtractClaimsFromToken()
+    {
+        var handler = new JwtSecurityTokenHandler();
+
+        if (mainLayout.JWT.Contains('.') && handler.CanReadToken(mainLayout.JWT))
+        {
+            var token = handler.ReadJwtToken(mainLayout.JWT);
+            return token.Claims.ToList();
+        }
+        return new List<Claim>();
+    }
+
+    private async Task<string> DisplayClaims(string type)
+    {
+        var claims = ExtractClaimsFromToken();
+
+        var userNameClaim = claims.FirstOrDefault(claim => claim.Type == type);
+        if (userNameClaim != null)
+        {
+            return userNameClaim.Value;
+
+        }
+        return null;
+    }
+
+}

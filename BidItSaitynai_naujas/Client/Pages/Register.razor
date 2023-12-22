@@ -1,0 +1,100 @@
+﻿@page "/register"
+@inject HttpClient Http
+@inject NavigationManager nav
+
+<h3 class="my-4">Registration</h3>
+
+<form @onsubmit="SubmitForm">
+    <div class="mb-3">
+        <p>Enter your information.</p>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="text" class="form-control" id="username" placeholder="" autocomplete="off" required @bind-value="reg.UserName" @onkeypress="() => message = null" />
+        <label for="username" class="form-label">Username</label>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="text" class="form-control" id="firstname" placeholder="" autocomplete="off" required @bind-value="reg.FirstName" @onkeypress="() => message = null" />
+        <label for="firstname" class="form-label">FirstName</label>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="text" class="form-control" id="lastname" placeholder="" autocomplete="off" required @bind-value="reg.LastName" @onkeypress="() => message = null" />
+        <label for="lastname" class="form-label">LastName</label>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="email" class="form-control" id="email" placeholder="" autocomplete="off" required @bind-value="reg.Email" @onkeypress="() => message = null" />
+        <label for="email" class="form-label">Email</label>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="password" class="form-control" id="pwd1" placeholder="" required @bind-value="reg.Password" @onkeypress="() => message = null" />
+        <label for="pwd1" class="form-label">Password</label>
+    </div>
+    <div class="form-floating mb-3">
+        <input type="password" class="form-control" id="pwd2" placeholder="" required @bind-value="confirmpwd" @onkeypress="() => message = null" />
+        <label for="pwd2" class="form-label">Confirm Password</label>
+    </div>
+    <button type="submit" class="btn btn-primary" disabled="@disableBtn">Submit</button>
+</form>
+
+<div class="my-3 alert alert-@alertType @(string.IsNullOrWhiteSpace(message) ? "d-none" : "")" role="alert">@message</div>
+
+@code {
+    [CascadingParameter]
+    public MainLayout mainLayout { get; set; }
+
+    string alertType, message;
+    bool disableBtn;
+
+    RegisterAccount reg = new RegisterAccount();
+    string confirmpwd;
+
+
+    private async Task<bool> SubmitForm()
+    {
+        if (reg.Password.Length < 8)
+        {
+            alertType = "danger";
+            message = "Passwords must be at least 8 characters.";
+        }
+        else if (reg.Password != confirmpwd)
+        {
+            reg.Password = null;
+            confirmpwd = null;
+            alertType = "danger";
+            message = "Passwords do not match. Please try again.";
+        }
+        else
+        {
+            disableBtn = true;
+            using (var msg = await Http.PostAsJsonAsync<RegisterAccount>("https://biditsaitynai.azurewebsites.net/api/register", reg, System.Threading.CancellationToken.None))
+            {
+                if (msg.IsSuccessStatusCode)
+                {
+                    RegisterResult result = await msg.Content.ReadFromJsonAsync<RegisterResult>();
+
+                    if (result.UserName != null)
+                    {
+
+                        alertType = "success";
+                        message = $"You have been registered. Login using your password and username.";
+                        reg.Clear();
+                        confirmpwd = null;
+                    }
+                    else
+                    {
+                        alertType = "danger";
+                        message = " Try again with different values.";
+                    }
+                }
+                disableBtn = false;
+            }
+
+        }
+        return false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+
+    }
+}

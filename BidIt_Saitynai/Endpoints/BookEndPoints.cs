@@ -37,8 +37,13 @@ namespace BidIt_Saitynai.Endpoints
                 return pagedList.Select(book => new BookDto(book.Id, book.Title, book.Condition, book.PageCount, book.StartingPrice, book.User.Id));
 
             }).WithName("GetBooks");
+            booksGroup.MapGet("books/users", [Authorize(Roles = ForumRoles.ForumUser + "," + ForumRoles.Admin)] async ([AsParameters] SearchParameters searchParams, BidDbContext dbContext, LinkGenerator linkGenerator, HttpContext httpContext) =>
+            {
+                var queryable = dbContext.Books.Include(x => x.User).Where(o=>o.UserId == httpContext.User.FindFirstValue(JwtRegisteredClaimNames.Sub)).ToList();
+                return queryable.Select(book => new UserBooksDto(book.Id, book.Title, book.Condition, book.PageCount, book.StartingPrice));
 
-            booksGroup.MapGet("books/{id}", async (int id, BidDbContext dbContext) =>
+            }).WithName("GetBooksUsers");
+            booksGroup.MapGet("books/{id}", [Authorize(Roles = ForumRoles.ForumUser + "," + ForumRoles.Admin)] async (int id, BidDbContext dbContext) =>
             {
                 var book = await dbContext.Books.Include(x => x.User).FirstOrDefaultAsync(o => o.Id == id);
                 if (book == null)
@@ -49,7 +54,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("GetBook");
 
-            booksGroup.MapPost("books", [Authorize(Roles = ForumRoles.ForumUser)] async ([Validate] CreateBookDto createBookDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
+            booksGroup.MapPost("books", [Authorize(Roles = ForumRoles.ForumUser + "," + ForumRoles.Admin)] async ([Validate] CreateBookDto createBookDto, BidDbContext dbContext, HttpContext httpContext, LinkGenerator linkGenerator) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(o => o.Id == createBookDto.user);
                 if (user == null)
@@ -72,7 +77,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("CreateBook");
 
-            booksGroup.MapPut("books/{id}", [Authorize(Roles = ForumRoles.ForumUser)] async (int id, [Validate] UpdateBookDto dto, BidDbContext dbContext, HttpContext httpContext) =>
+            booksGroup.MapPut("books/{id}", [Authorize(Roles = ForumRoles.ForumUser + "," + ForumRoles.Admin)] async (int id, [Validate] UpdateBookDto dto, BidDbContext dbContext, HttpContext httpContext) =>
             {
                 var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == dto.user);
                 if (user == null)
@@ -101,7 +106,7 @@ namespace BidIt_Saitynai.Endpoints
 
             }).WithName("UpdateBook");
 
-            booksGroup.MapDelete("books/{id}", async (int id, BidDbContext dbContext) =>
+            booksGroup.MapDelete("books/{id}", [Authorize(Roles = ForumRoles.ForumUser + "," + ForumRoles.Admin)] async (int id, BidDbContext dbContext) =>
             {
                 var book = await dbContext.Books.FirstOrDefaultAsync(o => o.Id == id);
                 if (book == null)

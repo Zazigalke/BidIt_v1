@@ -1,0 +1,216 @@
+﻿@using System.Text.Json;
+@using Microsoft.IdentityModel.Tokens;
+@using System.IdentityModel.Tokens.Jwt;
+@using System.Security.Claims;
+@inherits LayoutComponentBase
+@inject Utilities.ILocalStorage LocalStorage
+@inject NavigationManager nav
+@inject HttpClient Http
+@inject HttpService service
+
+<CascadingValue Value="this">
+    
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+            <div class="content px-4">
+            <MainHeader />
+            
+                @Body
+            </div>
+            <footer style="margin-top: 95vh; margin-right: 10px">
+                <p>@footerText</p>
+            </footer>
+        
+    </div>
+    
+</CascadingValue>
+
+
+<div class="modal-backdrop fade @(show ? "show" : "") @(display ? "" : "d-none")"></div>
+<div class="modal fade @(show ? "show" : "")  @(display ? "d-block" : "d-none")" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Login Form</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="Cancel">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form @onsubmit="SubmitLogonForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" placeholder="" autocomplete="off" required @bind-value="log.Username" @onkeypress="() => loginMessage = null" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="loginPassword" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="loginPassword" required @bind-value="log.Password" @onkeypress="() => loginMessage = null" />
+                    </div>
+                    <div class="mb-3 alert alert-danger @(string.IsNullOrWhiteSpace(loginMessage) ? "d-none" : "")" role="alert">@loginMessage</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success" disabled="@disableBtn">Login</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="Cancel">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private bool show, display, disableBtn;
+    LoginAccount log = new LoginAccount();
+    private string footerText = "@ 2023 BidIt, All rights reserved";
+    private string loginMessage, accessJWT, refreshJWT, userEmail, userName;
+    bool loggedIn;
+
+    [Parameter]
+    public bool LoggedIn
+    {
+        get { return loggedIn; }
+        set { } // NOTE: don't allow this parameter to be set
+    }
+    [Parameter]
+
+    public string JWT
+    {
+        get { return accessJWT; }
+        set { } // NOTE: don't allow this parameter to be set
+    }
+
+    [Parameter]
+    public string UserEmail
+    {
+        get { return userEmail; }
+        set { } // NOTE: don't allow this parameter to be set
+    }
+
+    [Parameter]
+    public string UserName
+
+    { get => userName; set => userName = value; } // NOTE: don't allow this parameter to be set
+
+
+    public async Task OpenLogin()
+    {
+        log.Clear();
+        display = true;
+        await Task.Delay(100);
+        show = true;
+    }
+
+
+
+    public async Task Logout()
+    {
+        userEmail = userName = accessJWT = null;
+        log.Clear();
+        loggedIn = false;
+        await LocalStorage.RemoveAsync("accessToken");
+        await LocalStorage.RemoveAsync("refreshToken");
+    }
+
+    private async Task<bool> SubmitLogonForm()
+    {
+        if (!string.IsNullOrEmpty(log.Username) && !string.IsNullOrEmpty(log.Password))
+        {
+            disableBtn = true;
+            using (var msg = await Http.PostAsJsonAsync<LoginAccount>("https://biditsaitynai.azurewebsites.net/api/login", log, System.Threading.CancellationToken.None))
+            {
+                if (msg.IsSuccessStatusCode)
+                {
+
+                    LoginResult result = await msg.Content.ReadFromJsonAsync<LoginResult>();
+                    if (!string.IsNullOrEmpty(result.accessToken))
+                    {
+
+                        await Cancel();
+                        loggedIn = true;
+                        accessJWT = result.accessToken;
+                        refreshJWT = result.refreshToken;
+                        userName = await DisplayClaims("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+                        await LocalStorage.SaveStringAsync("accessToken", result.accessToken);
+                        await LocalStorage.SaveStringAsync("refreshToken", result.refreshToken);
+                        service.SetHeader(accessJWT);
+                        //Console.WriteLine(accessJWT);
+                    }
+                    else
+                    {
+                        loginMessage = result.accessToken;
+                    }
+                }
+                disableBtn = false;
+            }
+        }
+        return false;
+    }
+
+    private async Task Cancel()
+    {
+        loginMessage = null;
+        show = false;
+        await Task.Delay(100);
+        display = false;
+    }
+    private List<Claim> ExtractClaimsFromToken()
+    {
+        var handler = new JwtSecurityTokenHandler();
+
+        if (accessJWT.Contains('.') && handler.CanReadToken(accessJWT))
+        {
+            var token = handler.ReadJwtToken(accessJWT);
+            return token.Claims.ToList();
+        }
+        return new List<Claim>();
+    }
+
+    private async Task<string> DisplayClaims(string type)
+    {
+        var claims = ExtractClaimsFromToken();
+
+        var userNameClaim = claims.FirstOrDefault(claim => claim.Type == type);
+        if (userNameClaim != null)
+        {
+            return userNameClaim.Value;
+
+        }
+        return null;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        HttpClient httpClient;
+
+        accessJWT = await LocalStorage.GetStringAsync("accessToken");
+        refreshJWT = await LocalStorage.GetStringAsync("refreshToken");
+        if (!string.IsNullOrEmpty(accessJWT))
+        {
+            string str = await DisplayClaims("exp");
+            var expirationTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(str)).DateTime;
+            Console.WriteLine(expirationTime.AddHours(1).AddMinutes(50));
+            Console.WriteLine(DateTime.Now);
+            if (expirationTime.AddHours(1).AddMinutes(50) > DateTimeOffset.Now)
+            {
+                loggedIn = true;
+                userName = await DisplayClaims("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name");
+                service.SetHeader(accessJWT);
+
+            }
+            else
+            {
+                loggedIn = false;
+            }
+
+        }
+        else
+        {
+            loggedIn = false;
+        }
+
+
+    }
+}

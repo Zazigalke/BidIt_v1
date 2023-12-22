@@ -1,0 +1,63 @@
+﻿@page "/account/tracking"
+@inject HttpClient Http
+@inject NavigationManager nav
+
+@if (mainLayout.LoggedIn)
+{
+	<h3 class="my-4">Tracking</h3>
+	if (tracking == null)
+	{
+		<div class="alert alert-secondary" role="alert">@message</div>
+	}
+	else
+	{
+		<div class="text-end w-100">
+			<button class="btn btn-sm btn-primary text-white" title="Refresh" href="javascript:;" @onclick="GetTracking"><span class="oi oi-loop-circular"></span></button>
+		</div>
+		<DataGrid Items="tracking" ParentClassName="table-responsive" TableClassName="table table-hover table-striped" DateFormatString="MM/dd/yyyy" />
+	}
+}
+else
+{
+	<div class="alert alert-danger" role="alert">Please Login for access...</div>
+	<button type="submit" class="btn btn-success" @onclick="mainLayout.OpenLogin">Login</button>
+}
+
+@code {
+	[CascadingParameter]
+	private MainLayout mainLayout { get; set; }
+
+	string message;
+
+	private List<Tracking> tracking;
+
+	private async Task GetTracking()
+	{
+		tracking = null;
+		message = "Loading...";
+		var requestMsg = new HttpRequestMessage(HttpMethod.Get, "/api/v1/tracking");
+		requestMsg.Headers.Add("Authorization", "Bearer " + mainLayout.JWT);
+		var response = await Http.SendAsync(requestMsg);
+		if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) // NOTE: THEN TOKEN HAS EXPIRED
+		{
+			await mainLayout.Logout();
+			nav.NavigateTo("/account");
+		}
+		else if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+			tracking = new List<Tracking>();
+		else if (response.IsSuccessStatusCode)
+			tracking = await response.Content.ReadFromJsonAsync<List<Tracking>>();
+		else
+			message = response.StatusCode.ToString();
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		await base.OnInitializedAsync();
+
+		if (mainLayout.LoggedIn)
+			await GetTracking();
+		else
+			nav.NavigateTo("/account");
+	}
+}
