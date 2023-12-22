@@ -1,4 +1,4 @@
-![image](https://github.com/Zazigalke/BidIt_v1/assets/133056297/41059f9a-1009-46d4-9c7a-61536890cf16)# BidIt_Saitynai
+# BidIt_Saitynai
 
 ## Sistemos paskirtis
 
